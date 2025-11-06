@@ -4,6 +4,10 @@ import numpy as np
 import time
 import sys, threading, queue, re
 import logging
+from TR_funcs import parse_place, quaternion_to_yaw, current_facing, location_transform_MAP2UI
+from TR_funcs import place_robot, robot_move_target, location_transform_UI2MAP, read_sensor
+from TR_funcs import yaw_target_deg, wrap_diff
+from TR_PID import PID
 
 ## LOAD MODEL ##
 
@@ -12,15 +16,7 @@ data = mujoco.MjData(model)
 
 ## PARAMETERS ##
 
-UITOMAP_SCALING_FACTOR = 0.8
-UITOMAP_OFFSET_FACTOR = 2
-MAPTOUI_SCALING_FACTOR = 1.25
-MAPTOUI_OFFSET_FACTOR = 2
 SETTLE_DEBOUNCE_CNT = 10
-
-# compile a regular expression to match PLACE commands
-PLACE_RE = re.compile(r'^\s*PLACE\s+(-?\d+)\s*,\s*(-?\d+)\s*,\s*([A-Za-z]+)\s*$')
-FACING_OK = {"NORTH","SOUTH","EAST","WEST"}
 
 # move control parameters
 KP_MOVE = 9
@@ -39,191 +35,6 @@ CTRL_CLIP_YAW = 10.3
 # yaw control edge detection and stopping parameters
 YAW_EDGE_STOP_LOW = -0.2
 YAW_EDGE_STOP_HIGH = 4.2
-
-
-## HELPERS ##
-
-def pid_control(error, prev_error, integral, Kp, Ki, Kd, dt, winduplim=100):
-    integral = np.clip(integral+ error * dt,-winduplim,winduplim) # integral anti wind up by clipping
-    derivative = (error - prev_error) / dt
-    output = Kp * error + Ki * integral + Kd * derivative
-    return output, error, integral
-
-
-def parse_place(s):
-    m = PLACE_RE.match(s) # match for the format PLACE X,Y,F where F in {"NORTH","SOUTH","EAST","WEST"}
-    if not m:
-        return None
-    x, y = int(m.group(1)), int(m.group(2))
-    facing = m.group(3).upper()
-    if facing not in FACING_OK:
-        logging.error(f"Invalid facing: {facing}")
-        return None
-    else:
-        return x, y, facing
-
-def quaternion_to_yaw(q_w, q_x, q_y, q_z):
-    """
-    Convert quaternion to yaw angle
-    Args:
-        q_w, q_x, q_y, q_z: quaternion components
-    Returns:
-        yaw angle (radians)
-    """
-    siny_cosp = 2 * (q_w * q_z + q_x * q_y)
-    cosy_cosp = 1 - 2 * (q_y * q_y + q_z * q_z)
-    yaw_rad = np.arctan2(siny_cosp, cosy_cosp)
-    return yaw_rad
-
-def place_robot(model, data, pos=(0.0, 0.0), facing = "NORTH"):
-    """
-    place toyrobot to specified position and orientation
-    Args:
-        model: mujoco model object
-        data: mujoco data object
-        pos: [x, y] position coordinates in map frame (after UI2MAP conversion)
-        facing: ["NORTH","SOUTH","EAST","WEST"] 
-    """
-    # position
-    data.qpos[0:2] = pos
-    data.qpos[2] = 4.25  # always drop the robot from 25cm above the table top. 
-
-    # orientation 
-    if facing == "EAST":
-        quat = [1, 0, 0, 0]  # No rotation
-    elif facing == "WEST":
-        quat = [0, 0, 0, 1]  # 180 degrees around Z
-    elif facing == "SOUTH":
-        quat = [0.7071, 0, 0, -0.7071]  # -90 degrees around Z
-    elif facing == "NORTH":
-        quat = [0.7071, 0, 0, 0.7071]  # 90 degrees around Z
-    data.qpos[3:7] = quat
-    # Reset velocities to reinitialize robot
-    data.qvel[:] = 0
-    # Forward simulation to perform place
-    mujoco.mj_forward(model, data)
-
-def robot_move_target (x,y,facing):
-    """
-    Calculates the x,y target coordinates when the robot gets a "MOVE" command
-    Args:
-        x: current x coordinate (in UI frame)
-        y: current y coordinate (in UI frame)
-        facing: ["NORTH","SOUTH","EAST","WEST"] 
-    Returns:
-        x_target: target for movement in x coordinate (in UI frame)
-        y_target: target for movement in y coordinate (in UI frame)
-    """
-    if facing=="NORTH": # if facing NORTH move foward in the y direction
-        y+=1
-    elif facing=="EAST": # if facing EAST move right in the x direction
-        x+=1
-    elif facing=="SOUTH": # if facing SOUTH move backward in the y direction
-        y-=1
-    elif facing=="WEST": # if facing WEST move left in the x direction
-        x-=1
-    else: 
-        print("facing incorrect, cannot decide where to move!")
-    return int(np.round(x)),int(np.round(y)) # round to the nearest and returns as an integer to allow 5 unit steps
-
-def current_facing (yaw):
-    """
-    Calculates current facing based on yaw angle
-    Args:
-        yaw: current yaw angle in degrees
-    Returns:
-        facing: current orientation of the robot in ["NORTH","SOUTH","EAST","WEST"]
-    """
-    yaw = yaw % 360                     # wrap yaw angle between 0 and 360 degs
-    yaw_tol = 45                        # threshold for direction calculation
-    if yaw > 360 - yaw_tol or yaw < 0 + yaw_tol:
-        facing = "EAST"
-    elif np.abs(yaw - 90) < yaw_tol:
-        facing = "NORTH"
-    elif np.abs(yaw - 180) < yaw_tol:
-        facing = "WEST"
-    elif np.abs(yaw - 270) < yaw_tol:
-        facing = "SOUTH"
-    else: 
-        facing = "INBETWEEN"
-    return facing
-
-def location_transform_UI2MAP(val):
-    """
-    Transforms the UI frame inputs (x or y coordinate) into the MAP frame
-    Args:
-        val: current x or y coordinate in UI frame
-    Returns:
-        val_scaled: transformed x or y coordinate in MAP frame
-    """
-    val_scaled =  (val - UITOMAP_OFFSET_FACTOR)*UITOMAP_SCALING_FACTOR
-    return val_scaled
-
-def location_transform_MAP2UI(val):
-    """
-    Transforms the MAP frame inputs (x or y coordinate) into the UI frame
-    Args:
-        val: current x or y coordinate in MAP frame
-    Returns:
-        val_scaled: transformed x or y coordinate in UI frame
-    """
-    val_scaled =  val*MAPTOUI_SCALING_FACTOR + MAPTOUI_OFFSET_FACTOR
-    return val_scaled
-
-def read_sensor(data):
-    """
-    Reads the sensor information from the simulation
-    Args: 
-        data: mujoco data object
-    Returns:
-        x: x coordinate in MAP frame
-        y: y coordinate in MAP frame
-        z: z coordinate in MAP frame
-        q_w: quaternion w component
-        q_x: quaternion x component
-        q_y: quaternion y component
-        q_z: quaternion z component
-    """
-    x = data.sensordata[0]
-    y = data.sensordata[1]
-    z = data.sensordata[2]
-    q_w = data.sensordata[3]
-    q_x = data.sensordata[4]
-    q_y = data.sensordata[5]
-    q_z = data.sensordata[6]
-    return x,y,z,q_w,q_x,q_y,q_z
-
-def yaw_target_deg(current_yaw_deg, direction):
-    """
-    Calculate target yaw rotation in radians based on "LEFT" or "RIGHT" commands.
-    Targets the controller to rotate the robot anti clockwise if "LEFT" command is provided.
-    Targets the controller to rotate the robot clockwise if "RIGHT" command is provided.
-    Args:
-        current_yaw_deg: current yaw angle in degrees
-        direction: target direction command ["LEFT","RIGHT"]
-    Returns:
-        target_yaw_rad: target yaw rate rounded to the nearest 90 degs converted to radians
-    """
-    if direction == "LEFT":
-        target_yaw_deg = current_yaw_deg + 90   # if "LEFT" rotate anti clockwise
-    elif direction == "RIGHT":
-        target_yaw_deg = current_yaw_deg - 90   # if "LEFT" rotate clockwise
-    else:
-        logging.error("Invalid Direction, cannot calculate yaw target, setting current value")
-        target_yaw_deg = current_yaw_deg        # if direction command is invalid, keep current orientation as the target
-    target_yaw_rad= np.deg2rad(round(target_yaw_deg / 90.0) * 90) # round to the nearest 90 degress (0,90,180,270)
-    return target_yaw_rad
-
-def wrap_diff(a, b):
-    """
-    Calculate the shortest signed angular distance betweens two angles
-    Args:
-        a: first angle in radians
-        b: second angle in radians
-    Returns:
-        omega_delta: short angular distance between the two angles in radians
-    """
-    return np.arctan2(np.sin(a - b), np.cos(a - b))
         
 ## MAIN ##
 
@@ -235,12 +46,11 @@ def main():
     placed_flag = False
 
     # PID #
-    prev_error_y = 0
-    prev_error_x = 0
-    prev_integral_x = 0
-    prev_integral_y = 0
-    prev_error_yaw = 0
-    prev_integral_yaw = 0
+    PID_move_north = PID(KP_MOVE,KI_MOVE,KD_MOVE,dt,winduplim=KIWD_MOVE)
+    PID_move_south = PID(KP_MOVE,KI_MOVE,KD_MOVE,dt,winduplim=KIWD_MOVE)
+    PID_move_east = PID(KP_MOVE,KI_MOVE,KD_MOVE,dt,winduplim=KIWD_MOVE)
+    PID_move_west = PID(KP_MOVE,KI_MOVE,KD_MOVE,dt,winduplim=KIWD_MOVE)
+    PID_yaw = PID(KP_YAW,KI_YAW,KD_YAW,dt,winduplim=KIWD_YAW)
 
     # Control Targets # 
     x_tgt = 2                           # Initalised to 2 as the model spwans in the centre of the table
@@ -333,7 +143,7 @@ def main():
                     if s.upper() == "REPORT" and placed_flag == True:   # report current position when "REPORT" is entered
                         print(f"robot at x={np.round(x_scaled)} y={np.round(y_scaled)} facing {facing}")
                     
-                    if s.upper() not in ["LEFT","RIGHT","MOVE","REPORT"] and not PLACE_RE.match(s):
+                    if s.upper() not in ["LEFT","RIGHT","MOVE","REPORT"] and parse_place(s) is None:
                         print("Invalid command, Valid Commands are:")
                         print("     PLACE X,Y,F   X,Y: bot initial coordinates, integers from 0-4 F: Target facing in [NORTH,SOUTH,EAST,WEST]")
                         print("     MOVE    move robot forward in current facing direction")
@@ -341,11 +151,8 @@ def main():
                         print("     RIGHT   rotate robot clockwise")
                         print("     REPORT  report the robots current X,Y and Facing ")
 
-                    if PLACE_RE.match(s):
+                    if parse_place(s) is not None:
                         place = parse_place(s)    # check for valid PLACE command
-                        if place is None:
-                            logging.warning("Invalid PLACE. Use PLACE X,Y,F with F in {NORTH,SOUTH,EAST,WEST}.")
-                            continue
                         x_place, y_place, facing = place
                         if x_place < 0 or x_place > 4 or y_place < 0 or y_place > 4:
                             logging.warning("Place coordinates outside table, Robot will fall and get hurt! Allowed coordinates from 0 to 4")
@@ -389,14 +196,14 @@ def main():
             and reduce target errors. Integral windup is used to avoid unwanted integral action. 
             """
 
-            if facing == "NORTH" and inhibit_move_motion ==False:  # Facing North
-                ctrl_move,prev_error_y,prev_integral_y = pid_control(y_error,prev_error_y,prev_integral_y,KP_MOVE,KI_MOVE,KD_MOVE,dt,winduplim=KIWD_MOVE)
-            elif facing == "SOUTH" and inhibit_move_motion ==False:  # Facing South
-                ctrl_move,prev_error_y,prev_integral_y = pid_control(-y_error,prev_error_y,prev_integral_y,KP_MOVE,KI_MOVE,KD_MOVE,dt,winduplim=KIWD_MOVE) # Reverse control direction
-            elif facing == "EAST" and inhibit_move_motion ==False:  # Facing East
-                ctrl_move,prev_error_x,prev_integral_x = pid_control(x_error,prev_error_x,prev_integral_x,KP_MOVE,KI_MOVE,KD_MOVE,dt,winduplim=KIWD_MOVE)
-            elif facing == "WEST" and inhibit_move_motion ==False:  # Facing West
-                ctrl_move,prev_error_x,prev_integral_x = pid_control(-x_error,prev_error_x,prev_integral_x,KP_MOVE,KI_MOVE,KD_MOVE,dt,winduplim=KIWD_MOVE) # Reverse control direction             
+            if facing == "NORTH" and inhibit_move_motion ==False:  # Facing North               
+                ctrl_move = PID_move_north.step(y_error)
+            elif facing == "SOUTH" and inhibit_move_motion ==False:  # Facing South               
+                ctrl_move = PID_move_south.step(-y_error) # Reverse control direction
+            elif facing == "EAST" and inhibit_move_motion ==False:  # Facing East               
+                ctrl_move = PID_move_east.step(x_error)
+            elif facing == "WEST" and inhibit_move_motion ==False:  # Facing West               
+                ctrl_move = PID_move_west.step(-x_error) # Reverse control direction       
             else:
                 ctrl_move = 0
             
@@ -418,7 +225,7 @@ def main():
                 
             if inhibit_yaw_motion==False:
                 
-                ctrl_yaw,prev_error_yaw,prev_integral_yaw = pid_control(yaw_error,prev_error_yaw,prev_integral_yaw,Kp=KP_YAW,Ki=KI_YAW,Kd=KD_YAW,dt=dt,winduplim=KIWD_YAW)
+                ctrl_yaw = PID_yaw.step(yaw_error)
                 ctrl_yaw = np.clip(ctrl_yaw,-CTRL_CLIP_YAW,CTRL_CLIP_YAW)  # clip control
 
                 if (x_scaled < YAW_EDGE_STOP_LOW or x_scaled > YAW_EDGE_STOP_HIGH or 
@@ -431,8 +238,7 @@ def main():
                 ctrl_yaw = 0
 
             if np.abs(yaw_error)<0.01:
-                prev_error_yaw = 0
-                prev_integral_yaw = 0                   # reset integral and error when the yaw error is almost zero to reduce impact on furture movements
+                PID_yaw.reset()                  # reset integral and error when the yaw error is almost zero to reduce impact on furture movements
 
 
             ## prevent cross motion between rotation and translation
