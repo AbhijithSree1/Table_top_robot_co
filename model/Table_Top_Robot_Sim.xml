@@ -26,34 +26,34 @@
 
 			<!-- wheel params -->
 			<!-- wheel radius=0.15, wheel width half=0.05 wheel mass=2-->
-			<!-- Track length 0.7, wheelbase 0.54 -->
+			<!-- Track length 0.5, wheelbase 0.4 -->
 
 			<body name="directionIndicator" pos="0.4 0 0.3">
 				<geom name="direction" type="cylinder" size="0.05 0.01" euler="0 0 90" rgba="0.3 0.2 0.2 1"/>
 			</body>
 
-			<body name="wheel_fl" pos=" 0.28  0.35 0">
+			<body name="wheel_fl" pos=" 0.20  0.25 0">
 				<joint name="j_fl" type="hinge" axis="0 1 0" limited="false" damping="0.2" armature="0.002"/>
 				<geom name="g_fl" type="cylinder" size="0.15 0.05" euler="90 0 0"
 					mass="2" friction="1.0 0.01 0.001" condim="3" solref="0.02 1" solimp="0.9 0.95 0.002"
 						rgba="0.1 0.1 0.1 1" contype="2" conaffinity="3"/>
 			</body>
 
-			<body name="wheel_fr" pos=" 0.28 -0.35 0">
+			<body name="wheel_fr" pos=" 0.20 -0.25 0">
 				<joint name="j_fr" type="hinge" axis="0 1 0" limited="false" damping="0.2" armature="0.002"/>
 				<geom name="g_fr" type="cylinder" size="0.15 0.05" euler="90 0 0"
 					mass="2" friction="1.0 0.01 0.001" condim="3" solref="0.02 1" solimp="0.9 0.95 0.002"
 						rgba="0.1 0.1 0.1 1" contype="2" conaffinity="3"/>
 			</body>
 
-			<body name="wheel_rl" pos="-0.28  0.35 0">
+			<body name="wheel_rl" pos="-0.20  0.25 0">
 				<joint name="j_rl" type="hinge" axis="0 1 0" limited="false" damping="0.2" armature="0.002"/>
 				<geom name="g_rl" type="cylinder" size="0.15 0.05" euler="90 0 0"
 					mass="2" friction="1.0 0.01 0.001" condim="3" solref="0.02 1" solimp="0.9 0.95 0.002"
 						rgba="0.1 0.1 0.1 1" contype="2" conaffinity="3"/>
 			</body>
 
-			<body name="wheel_rr" pos="-0.28 -0.35 0">
+			<body name="wheel_rr" pos="-0.20 -0.25 0">
 				<joint name="j_rr" type="hinge" axis="0 1 0" limited="false" damping="0.2" armature="0.002"/>
 				<geom name="g_rr" type="cylinder" size="0.15 0.05" euler="90 0 0"
 					mass="2" friction="1.0 0.01 0.001" condim="3" solref="0.02 1" solimp="0.9 0.95 0.002"
