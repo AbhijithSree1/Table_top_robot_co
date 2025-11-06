@@ -3,7 +3,7 @@ import mujoco.viewer
 import time
 import sys, threading, queue
 import logging
-from TR_Controller import Controller
+from .TR_Controller import Controller
  
 ## MAIN ##
 

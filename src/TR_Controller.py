@@ -1,9 +1,9 @@
 import numpy as np
 import logging
-from TR_funcs import parse_place, quaternion_to_yaw, current_facing, location_transform_MAP2UI
-from TR_funcs import place_robot, robot_move_target, location_transform_UI2MAP, read_sensor
-from TR_funcs import yaw_target_deg, wrap_diff
-from TR_PID import PID
+from .TR_funcs import parse_place, quaternion_to_yaw, current_facing, location_transform_MAP2UI
+from .TR_funcs import place_robot, robot_move_target, location_transform_UI2MAP, read_sensor
+from .TR_funcs import yaw_target_deg, wrap_diff
+from .TR_PID import PID
 
 
 class Controller:
