@@ -3,7 +3,7 @@ import logging
 import pytest
 import mujoco
 import time
-import threading, queue
+import threading
 import logging
 from src.ToyRobotControl_main import main
 
@@ -76,13 +76,13 @@ def test_TC_045_integration_movement_1(capsys,monkeypatch,params):
             "QUIT"
         ]
         for cmd in commands:
-            cmd_q.put(cmd + "\n")  # add newline at the end of each command
-            time.sleep(1.5)          # wait 1 second between commands to allow processing
+            cmd_q.put(cmd + "\n")       # add newline at the end of each command
+            time.sleep(1.5)             # wait 1 second between commands to allow processing
 
     # Start feeder thread
     threading.Thread(target=slow_input_feeder, daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
+    # Replace sys.stdin so main() reads from queue instead of the real terminal
     class FakeStdin:
         def __iter__(self):
             while True:
@@ -123,7 +123,7 @@ def test_TC_045_integration_movement_2(capsys,monkeypatch,params):
     # Start feeder thread
     threading.Thread(target=slow_input_feeder, daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
+    # Replace sys.stdin so main() reads from queue instead of the real terminal
     class FakeStdin:
         def __iter__(self):
             while True:
@@ -165,7 +165,7 @@ def test_TC_045_integration_movement_3(capsys,monkeypatch,params):
     # Start feeder thread
     threading.Thread(target=slow_input_feeder, daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
+    # Replace sys.stdin so main() reads from queue instead of the real terminal
     class FakeStdin:
         def __iter__(self):
             while True:
@@ -202,7 +202,7 @@ def test_TC_046_first_command_not_place(caplog,monkeypatch,params):
     # Start feeder thread
     threading.Thread(target=slow_input_feeder, daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
+    # Replace sys.stdin so main() reads from queue instead of the real terminal
     class FakeStdin:
         def __iter__(self):
             while True:
@@ -239,7 +239,7 @@ def test_TC_047_invalid_command(capsys,monkeypatch,params):
     # Start feeder thread
     threading.Thread(target=slow_input_feeder, daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
+    # Replace sys.stdin so main() reads from queue instead of the real terminal
     class FakeStdin:
         def __iter__(self):
             while True:
@@ -281,7 +281,7 @@ def test_TC_048_moving_left(caplog,monkeypatch,params):
     # Start feeder thread
     threading.Thread(target=slow_input_feeder, daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
+    # Replace sys.stdin so main() reads from queue instead of the real terminal
     class FakeStdin:
         def __iter__(self):
             while True:
@@ -318,7 +318,7 @@ def test_TC_049_moving_right(caplog,monkeypatch,params):
     # Start feeder thread
     threading.Thread(target=slow_input_feeder, daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
+    # Replace sys.stdin so main() reads from queue instead of the real terminal
     class FakeStdin:
         def __iter__(self):
             while True:
@@ -355,7 +355,7 @@ def test_TC_050_moving_foward(caplog,monkeypatch,params):
     # Start feeder thread
     threading.Thread(target=slow_input_feeder, daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
+    # Replace sys.stdin so main() reads from queue instead of the real terminal
     class FakeStdin:
         def __iter__(self):
             while True:
@@ -392,7 +392,7 @@ def test_TC_051_moving_foward_clip(caplog,monkeypatch,params):
     # Start feeder thread
     threading.Thread(target=slow_input_feeder, daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
+    # Replace sys.stdin so main() reads from queue instead of the real terminal
     class FakeStdin:
         def __iter__(self):
             while True:
@@ -428,7 +428,7 @@ def test_TC_052_place_outside_table(caplog,monkeypatch,params):
     # Start feeder thread
     threading.Thread(target=slow_input_feeder, daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
+    # Replace sys.stdin so main() reads from queue instead of the real terminal
     class FakeStdin:
         def __iter__(self):
             while True:
@@ -466,7 +466,7 @@ def test_TC_053_move_inhibit(caplog,monkeypatch,params):
     # Start feeder thread
     threading.Thread(target=slow_input_feeder, daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
+    # Replace sys.stdin so main() reads from queue instead of the real terminal
     class FakeStdin:
         def __iter__(self):
             while True:
@@ -504,7 +504,7 @@ def test_TC_054_yaw_inhibit(caplog,monkeypatch,params):
     # Start feeder thread
     threading.Thread(target=slow_input_feeder, daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
+    # Replace sys.stdin so main() reads from queue instead of the real terminal
     class FakeStdin:
         def __iter__(self):
             while True:

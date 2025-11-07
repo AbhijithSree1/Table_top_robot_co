@@ -1,10 +1,3 @@
-# tests/test_TR_Controller.py
-# ---------------------------------------------------------------------------
-# Unit tests for src.TR_Controller.Controller
-# - No MuJoCo runtime required. We stub TR_funcs calls used by the controller.
-# - Tests use IDs TC_031+ to continue your plan.
-# ---------------------------------------------------------------------------
-
 import math
 import queue
 import logging
@@ -26,7 +19,6 @@ class FakeModel:
 
 class FakeData:
     def __init__(self):
-        # Only required so TR_funcs.read_sensor(fake_data) can accept it.
         self.marker = True
 
 
@@ -40,7 +32,7 @@ def data():
 
 @pytest.fixture
 def params():
-    # Mirror your defaults
+    # Mirror defaults
     return dict(
         Kp_move=9.0, Ki_move=1.2, Kd_move=7.2, Kiwd_move=0.8,
         Kp_yaw=9.6, Ki_yaw=2.05, Kd_yaw=2.15, Kiwd_yaw=0.8,
@@ -72,7 +64,6 @@ def stubbed_io(monkeypatch):
     """
     import src.TR_Controller as C
 
-    # Keep simple deterministic values
     monkeypatch.setattr(C, "read_sensor",
                         lambda d: (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0))
     monkeypatch.setattr(C, "quaternion_to_yaw", lambda *a: 0.0)
@@ -126,7 +117,7 @@ def test_TC_032_place_flow_sets_flags_and_targets(controller, stubbed_io, caplog
 
     with caplog.at_level(logging.INFO): # capture log output
          
-        controller.controller_read_inputs()  # seed facing/yaw from stubs
+        controller.controller_read_inputs()  
         try:
             controller.controller_target_calc(q(["PLACE 1,2,NORTH"]))
         except queue.Empty:
@@ -154,7 +145,7 @@ def test_TC_033_move_updates_targets_and_clips(controller, stubbed_io):
         controller.controller_target_calc(q(["MOVE"]))
     except queue.Empty:
                 pass
-    # our stub returns +1,+1 so clipping should bound to 4
+    # stub returns +1,+1 so clipping should bound to 4
     assert controller.x_tgt == 4.0
     assert controller.y_tgt == 4.0
     assert stubbed_io["move_target"] == 1
@@ -171,7 +162,6 @@ def test_TC_033_move_updates_targets(controller, stubbed_io):
         controller.controller_target_calc(q(["MOVE"]))
     except queue.Empty:
                 pass
-    # our stub returns +1,+1 so clipping should bound to 4
     assert controller.x_tgt == 1.0
     assert controller.y_tgt == 1.0
     assert stubbed_io["move_target"] == 1
@@ -286,7 +276,7 @@ def test_TC_040_small_yaw_error_triggers_pid_reset(controller, stubbed_io):
     controller.facing = "NORTH"
     controller.yaw_tgt = 0.0
     controller.yaw_unwrapped = 0.0
-    # build some integral first
+    # build some integral
     controller.PID_yaw.integral = 5.0
     controller.PID_yaw.prev_error = 1.0
 
@@ -314,7 +304,7 @@ def test_TC_042_yaw_clip_applies(controller, stubbed_io):
     """
     controller.placed_flag = True
     controller.facing = "NORTH"
-    controller.x_scaled = controller.y_scaled = 0.0  # inside safe box
+    controller.x_scaled = controller.y_scaled = 0.0 
     controller.yaw_unwrapped = 0.0
     controller.yaw_tgt = 10.0  # big error
     _, ctrl_yaw = controller.controller_control_output()
@@ -358,7 +348,7 @@ def test_TC_044_cross_motion_inhibit_yaw_then_release(controller, stubbed_io):
     controller.controller_control_output()
     assert controller.inhibit_move_motion is True
 
-    # Now settle yaw error near zero for debounce cycles
+    # settle yaw error near zero for debounce cycles
     controller.yaw_tgt = controller.yaw_unwrapped
     for _ in range(controller.SETTLE_DEBOUNCE_CNT + 1):
          controller.controller_control_output()

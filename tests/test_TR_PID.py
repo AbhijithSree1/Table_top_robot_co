@@ -1,13 +1,3 @@
-# test_TR_PID.py
-# ---------------------------------------------------------------------------
-# Unit tests for TR_PID.PID
-#
-# Structure:
-# - Each test is small, focused, and labeled with a Test ID.
-# - No external dependencies; runs instantly with pytest.
-# - Tests verify proportional, integral, derivative, and reset behavior.
-# ---------------------------------------------------------------------------
-
 import numpy as np
 import pytest
 from src.TR_PID import PID  # adjust import if src path differs
@@ -92,7 +82,7 @@ def test_TC_007_zero_error_steady_state(basic_pid):
     TC_007: For zero error, derivative=0 and proportional term=0;
     output should be only integral term contribution (which may persist).
     """
-    # build up some integral first
+    # build up some integral
     for _ in range(3):
         basic_pid.step(2.0)
     for _ in range(2): # left derivative zero out

@@ -66,7 +66,7 @@ def place_robot(model, data, pos=(0.0, 0.0), facing = "NORTH"): # Requirement ID
     elif facing == "NORTH":
         quat = [0.7071, 0, 0, 0.7071]  # 90 degrees around Z
     data.qpos[3:7] = quat
-    # Reset velocities to reinitialize robot
+    # Reset velocities to reinitialise robot
     data.qvel[:] = 0
     # Forward simulation to perform place
     mujoco.mj_forward(model, data)

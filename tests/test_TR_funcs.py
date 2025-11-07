@@ -1,20 +1,3 @@
-# test_TR_funcs.py
-# ---------------------------------------------------------------------------
-# Unit tests for TR_funcs.py
-#
-# Structure:
-# - A small FakeModel/FakeData simulate just the attributes TR_funcs uses.
-# - We stub out mujoco.mj_forward so tests run without MuJoCo installed/running.
-# - Each test is labeled with a Test ID (TC_xxx) to map back to the Excel plan.
-# - Tests are grouped by function and cover happy paths, edge cases, and I/O.
-#
-# Good structure notes:
-# - Pure functions are tested with simple parametrized cases.
-# - Anything that touches external I/O (MuJoCo) is isolated behind a stub.
-# - User-facing prints are verified with capsys; diagnostics with caplog.
-# - Tolerances are explicit where floating point or π wrap is involved.
-# ---------------------------------------------------------------------------
-
 import math
 import numpy as np
 import pytest
@@ -22,7 +5,7 @@ import pytest
 import src.TR_funcs as F
 
 
-# ------------------------- Test doubles / fixtures -------------------------
+# ------------------------- Fakes / fixtures -------------------------
 
 class FakeData:
     """Minimal stand-in for MuJoCo's data with only the fields TR_funcs reads/writes."""

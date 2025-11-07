@@ -29,7 +29,7 @@ def main(model, data, KP_MOVE, KI_MOVE, KD_MOVE, KIWD_MOVE,
 
     ## MODEL INITIALISATIONS ##
     dt = model.opt.timestep             # simulation timestep
-    model.opt.gravity[2] = 0            # prevent the model from being placed untill the first PLACE command is issued
+    model.opt.gravity[2] = 0            # prevent the model from being placed until the first PLACE command is issued
 
     # INITIALISE CONTROLLER
     TR_controller = Controller(model=model,data=data,Kp_move=KP_MOVE,Ki_move=KI_MOVE,Kd_move=KD_MOVE,
