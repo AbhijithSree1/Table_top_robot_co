@@ -7,7 +7,7 @@
 
 import math
 import queue
-import types
+import logging
 import numpy as np
 import pytest
 
@@ -123,8 +123,15 @@ def test_TC_032_place_flow_sets_flags_and_targets(controller, stubbed_io, caplog
     TC_032: PLACE should mark placed, set gravity, set targets to current state,
     and call place_robot exactly once.
     """
-    controller.controller_read_inputs()  # seed facing/yaw from stubs
-    controller.controller_target_calc(q(["PLACE 1,2,NORTH"]))
+
+    with caplog.at_level(logging.INFO): # capture log output
+         
+        controller.controller_read_inputs()  # seed facing/yaw from stubs
+        try:
+            controller.controller_target_calc(q(["PLACE 1,2,NORTH"]))
+        except queue.Empty:
+                    pass
+
 
     assert controller.placed_flag is True
     assert controller.model.opt.gravity[2] == -9.81
@@ -132,7 +139,7 @@ def test_TC_032_place_flow_sets_flags_and_targets(controller, stubbed_io, caplog
     # targets set to current scaled positions (0,0) from stubbed read_sensor
     assert controller.x_tgt == controller.x_scaled == 0.0
     assert controller.y_tgt == controller.y_scaled == 0.0
-    assert any("PLACING" in r.message for r in caplog.records)
+    assert "PLACING" in caplog.text
 
 
 def test_TC_033_move_updates_targets_and_clips(controller, stubbed_io):
@@ -143,12 +150,31 @@ def test_TC_033_move_updates_targets_and_clips(controller, stubbed_io):
     controller.facing = "NORTH"
     controller.x_scaled = 4.0
     controller.y_scaled = 4.0
-    controller.controller_target_calc(q(["MOVE"]))
+    try:
+        controller.controller_target_calc(q(["MOVE"]))
+    except queue.Empty:
+                pass
     # our stub returns +1,+1 so clipping should bound to 4
     assert controller.x_tgt == 4.0
     assert controller.y_tgt == 4.0
     assert stubbed_io["move_target"] == 1
 
+def test_TC_033_move_updates_targets(controller, stubbed_io):
+    """
+    TC_033: MOVE should update x_tgt,y_tgt via robot_move_target then clip to [0,4].
+    """
+    controller.placed_flag = True
+    controller.facing = "NORTH"
+    controller.x_scaled = 0.0
+    controller.y_scaled = 0.0
+    try:
+        controller.controller_target_calc(q(["MOVE"]))
+    except queue.Empty:
+                pass
+    # our stub returns +1,+1 so clipping should bound to 4
+    assert controller.x_tgt == 1.0
+    assert controller.y_tgt == 1.0
+    assert stubbed_io["move_target"] == 1
 
 def test_TC_034_left_right_update_yaw_target(controller, stubbed_io):
     """
@@ -157,9 +183,15 @@ def test_TC_034_left_right_update_yaw_target(controller, stubbed_io):
     controller.placed_flag = True
     controller.yaw_unwrapped = 0.0
     controller.yaw_unwrapped_deg = 0.0
-    controller.controller_target_calc(q(["LEFT"]))
+    try:
+        controller.controller_target_calc(q(["LEFT"]))
+    except queue.Empty:
+                pass
     left_tgt = controller.yaw_tgt
-    controller.controller_target_calc(q(["RIGHT"]))
+    try:
+        controller.controller_target_calc(q(["RIGHT"]))
+    except queue.Empty:
+                pass    
     right_tgt = controller.yaw_tgt
     assert np.isclose(left_tgt, math.radians(90))
     assert np.isclose(right_tgt, math.radians(-90))
@@ -172,7 +204,10 @@ def test_TC_035_rotation_inhibit_blocks_left(controller, stubbed_io, caplog):
     controller.placed_flag = True
     controller.inhibit_yaw_motion = True
     controller.yaw_tgt = 0.0
-    controller.controller_target_calc(q(["LEFT"]))
+    try:
+        controller.controller_target_calc(q(["LEFT"]))
+    except queue.Empty:
+                pass
     assert controller.yaw_tgt == 0.0
     assert any("Cannot accept a rotation" in r.message for r in caplog.records)
 
@@ -184,7 +219,11 @@ def test_TC_036_move_inhibit_blocks_move(controller, stubbed_io, caplog):
     controller.placed_flag = True
     controller.inhibit_move_motion = True
     controller.x_tgt, controller.y_tgt = 1.0, 1.0
-    controller.controller_target_calc(q(["MOVE"]))
+    with caplog.at_level(logging.INFO):
+        try:
+            controller.controller_target_calc(q(["MOVE"]))
+        except queue.Empty:
+                    pass
     assert (controller.x_tgt, controller.y_tgt) == (1.0, 1.0)
     assert any("Cannot accept a move motion" in r.message for r in caplog.records)
 
@@ -197,16 +236,22 @@ def test_TC_037_report_prints(capsys, controller, stubbed_io):
     controller.x_scaled = 2.0
     controller.y_scaled = 3.0
     controller.facing = "NORTH"
-    controller.controller_target_calc(q(["REPORT"]))
-    out = capsys.readouterr().out
-    assert "robot at x=2.0 y=3.0 facing NORTH" in out
+    try:
+        controller.controller_target_calc(q(["REPORT"]))
+    except queue.Empty:
+                pass
+    out = capsys.readouterr().out # capture stdout
+    assert "robot at x=2 y=3 facing NORTH" in out
 
 
 def test_TC_038_invalid_command_prints_help(capsys, controller, stubbed_io):
     """
     TC_038: Unknown command should print help text.
     """
-    controller.controller_target_calc(q(["DO_SOMETHING_ELSE"]))
+    try:
+        controller.controller_target_calc(q(["DO_SOMETHING_ELSE"]))
+    except queue.Empty:
+                pass
     out = capsys.readouterr().out
     assert "Invalid command" in out
     assert "PLACE X,Y,F" in out
@@ -284,7 +329,7 @@ def test_TC_043_cross_motion_inhibit_move_then_release(controller, stubbed_io):
     controller.placed_flag = True
     controller.facing = "EAST"
     controller.x_scaled = 0.0
-    controller.x_tgt = 100.0
+    controller.x_tgt = 1.0
     controller.y_scaled = controller.y_tgt = 0.0
 
     # Engage inhibit
@@ -294,7 +339,7 @@ def test_TC_043_cross_motion_inhibit_move_then_release(controller, stubbed_io):
     # Remove error and step through debounce
     controller.x_tgt = controller.x_scaled
     for _ in range(controller.SETTLE_DEBOUNCE_CNT + 1):
-        controller.controller_control_output()
+        controller.controller_control_output()  
     assert controller.inhibit_yaw_motion is False
 
 
@@ -316,5 +361,5 @@ def test_TC_044_cross_motion_inhibit_yaw_then_release(controller, stubbed_io):
     # Now settle yaw error near zero for debounce cycles
     controller.yaw_tgt = controller.yaw_unwrapped
     for _ in range(controller.SETTLE_DEBOUNCE_CNT + 1):
-        controller.controller_control_output()
+         controller.controller_control_output()
     assert controller.inhibit_move_motion is False

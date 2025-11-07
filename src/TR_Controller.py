@@ -154,7 +154,7 @@ class Controller:
                 continue
 
             if s.upper() == "REPORT" and self.placed_flag == True:   # report current position when "REPORT" is entered
-                print(f"robot at x={np.round(self.x_scaled)} y={np.round(self.y_scaled)} facing {self.facing}")
+                print(f"robot at x={int(np.round(self.x_scaled))} y={int(np.round(self.y_scaled))} facing {self.facing}")
                 continue
             
             place = parse_place(s) # check for valid PLACE command
@@ -277,7 +277,7 @@ class Controller:
 
         if abs(ctrl_move)<= 0.5 and self.inhibit_yaw_motion==True:
             self.motion_settle_cntr+=1
-            if self.motion_settle_cntr>self.SETTLE_DEBOUNCE_CNT:
+            if self.motion_settle_cntr>=self.SETTLE_DEBOUNCE_CNT:
                 self.inhibit_yaw_motion = False
 
 
@@ -287,6 +287,6 @@ class Controller:
 
         if abs(ctrl_yaw)<=0.5 and self.inhibit_move_motion==True:
             self.yaw_settle_cntr+=1
-            if self.yaw_settle_cntr>self.SETTLE_DEBOUNCE_CNT or self.edge_evade_move == True:  # remove inhibit_move_motion immediately when edge_evade_move flag is true
+            if self.yaw_settle_cntr>=self.SETTLE_DEBOUNCE_CNT or self.edge_evade_move == True:  # remove inhibit_move_motion immediately when edge_evade_move flag is true
                 self.inhibit_move_motion = False
         return ctrl_move, ctrl_yaw

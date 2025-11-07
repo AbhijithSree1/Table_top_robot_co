@@ -7,7 +7,11 @@ from .TR_Controller import Controller
  
 ## MAIN ##
 
-def main():
+def main(model, data, KP_MOVE, KI_MOVE, KD_MOVE, KIWD_MOVE,
+         KP_YAW, KI_YAW, KD_YAW, KIWD_YAW,
+         CTRL_CLIP_MOVE, CTRL_CLIP_YAW,
+         YAW_EDGE_STOP_HIGH, YAW_EDGE_STOP_LOW,
+         SETTLE_DEBOUNCE_CNT):
 
     """
     This is the main function that runs the mujoco simulation and the robot controller
@@ -106,4 +110,8 @@ if __name__ == "__main__":
     YAW_EDGE_STOP_HIGH = 4.2
 
     ## run main
-    main()
+    main(model, data, KP_MOVE, KI_MOVE, KD_MOVE, KIWD_MOVE,
+         KP_YAW, KI_YAW, KD_YAW, KIWD_YAW,
+         CTRL_CLIP_MOVE, CTRL_CLIP_YAW,
+         YAW_EDGE_STOP_HIGH, YAW_EDGE_STOP_LOW,
+         SETTLE_DEBOUNCE_CNT)
