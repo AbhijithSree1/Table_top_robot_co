@@ -49,7 +49,14 @@ def main(model, data, KP_MOVE, KI_MOVE, KD_MOVE, KIWD_MOVE,
 
         threading.Thread(target=stdin_reader, daemon=True).start()  # Create a new thread that reads stdin
 
+        # set initial camera view
+        viewer.cam.lookat[:] = [0, 0, 2]
+        viewer.cam.distance = 10
+        viewer.cam.azimuth = 45
+        viewer.cam.elevation = -40
+
         while viewer.is_running():
+            
             # Read inputs and instantiate controller targets
             TR_controller.controller_read_inputs()
 
