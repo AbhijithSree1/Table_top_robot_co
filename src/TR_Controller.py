@@ -57,7 +57,7 @@ class Controller:
         self.PID_yaw = PID(self.KP_YAW,self.KI_YAW,self.KD_YAW,self.dt,winduplim=self.KIWD_YAW)
 
         # Control Targets # 
-        self.x_tgt = 2                           # Initalised to 2 as
+        self.x_tgt = 2                           # Initialised to 2 as the robot starts at center of 0-4 grid
         self.y_tgt = 2
         self.yaw_tgt = 0                         # radians
 
@@ -95,7 +95,7 @@ class Controller:
             
         else:                                                               # On future steps calculate the continuous yaw angle, avoids discontinuities, smooth control
             dy = wrap_diff(yaw_wrapped, self.yaw_wrapped_prev)              # calculate delta between previous wrapped angle and current angle
-            self.yaw_unwrapped   += dy                                        # continuously add to unwrapped yaw to obtain continuous yaw angle 
+            self.yaw_unwrapped   += dy                                      # continuously add to unwrapped yaw to obtain continuous yaw angle 
             self.yaw_wrapped_prev = yaw_wrapped
 
         self.yaw_unwrapped_deg = np.rad2deg(self.yaw_unwrapped)
@@ -103,8 +103,8 @@ class Controller:
 
     def controller_target_calc(self,cmd_q):
         """
-        Reads the user commands from standard input and updates that internal states and targets
-        such as x,y coordinates, new robot spwan, facing direction, x,y and yaw targets. 
+        Reads the user commands from standard input and updates the internal states and targets
+        such as x,y coordinates, new robot spawn, facing direction, x,y and yaw targets. 
         Args:
             cmd_q: command queue from standard input thread
         """
@@ -167,7 +167,7 @@ class Controller:
                 continue
             
             # Requirement ID SR-007
-            place = parse_place(s) # check for valid PLACE command
+            place = parse_place(s.upper()) # check for valid PLACE command
 
             # Requirement ID SR-027
             if s.upper() not in ["LEFT","RIGHT","MOVE","REPORT"] and place is None:
@@ -187,23 +187,23 @@ class Controller:
                     continue
                 else:
                     logging.info(f"PLACING with x={x_place} y={y_place} facing={tgt_facing}")
-                    x_place = location_transform_UI2MAP(np.clip(x_place,0,4))   # transform UI frame X coordinate to MAP frame
-                    y_place = location_transform_UI2MAP(np.clip(y_place,0,4))   # transform UI frame Y coordinate to MAP frame
+                    x_place = location_transform_UI2MAP(np.clip(x_place,0,4))           # transform UI frame X coordinate to MAP frame
+                    y_place = location_transform_UI2MAP(np.clip(y_place,0,4))           # transform UI frame Y coordinate to MAP frame
                     place_robot(self.model,self.data,pos=[x_place,y_place],facing=tgt_facing)       # place the robot
-                    self.placed_flag = True                                          # set placed flag as true
-                    self.model.opt.gravity[2] = -9.81                                # enable gravity to allow the robot to fall and continue further movements
-                    x,y,_,q_w,q_x,q_y,q_z = read_sensor(self.data)                   # read updates states after PLACING
-                    self.x_scaled = location_transform_MAP2UI(x)                     # transform MAP frame X coordinate to UI frame
-                    self.y_scaled = location_transform_MAP2UI(y)                     # transform MAP frame Y coordinate to UI frame
-                    self.x_tgt = self.x_scaled                                            # reset x_target as the new PLACED x coordinate
-                    self.y_tgt = self.y_scaled                                            # reset y_target as the new PLACED y coordinate
-                    yaw_wrapped  = quaternion_to_yaw(q_w,q_x,q_y,q_z)           # calculate current rotation after PLACING
+                    self.placed_flag = True                                             # set placed flag as true
+                    self.model.opt.gravity[2] = -9.81                                   # enable gravity to allow the robot to fall and continue further movements
+                    x,y,_,q_w,q_x,q_y,q_z = read_sensor(self.data)                      # read updates states after PLACING
+                    self.x_scaled = location_transform_MAP2UI(x)                        # transform MAP frame X coordinate to UI frame
+                    self.y_scaled = location_transform_MAP2UI(y)                        # transform MAP frame Y coordinate to UI frame
+                    self.x_tgt = self.x_scaled                                          # reset x_target as the new PLACED x coordinate
+                    self.y_tgt = self.y_scaled                                          # reset y_target as the new PLACED y coordinate
+                    yaw_wrapped  = quaternion_to_yaw(q_w,q_x,q_y,q_z)                   # calculate current rotation after PLACING
                     # Requirement ID SR-013
-                    self.yaw_wrapped_prev = yaw_wrapped                              # reset yaw continuous measurements
+                    self.yaw_wrapped_prev = yaw_wrapped                                 # reset yaw continuous measurements
                     self.yaw_unwrapped     = yaw_wrapped
                     self.yaw_unwrapped_deg = np.rad2deg(self.yaw_unwrapped)
-                    self.yaw_tgt = yaw_wrapped                                       # reset yaw target to the new PLACED yaw angle
-                    self.facing = current_facing(self.yaw_unwrapped_deg)                   # determine the current facing
+                    self.yaw_tgt = yaw_wrapped                                          # reset yaw target to the new PLACED yaw angle
+                    self.facing = current_facing(self.yaw_unwrapped_deg)                # determine the current facing
                     # Requirement ID SR-031
                     logging.info(f"robot placed at x={self.x_scaled:.2f} y={self.y_scaled:.2f} facing {self.facing}")
 
@@ -224,8 +224,8 @@ class Controller:
 
         ## Control for longitudinal motion ##
         """
-        This section of code controls the robots motion in longitudinal direction depending on facing of the robot. The controller
-        outputs the total torque demand acorss the entire chassis to read the x and y target. This is further arbitrated below to
+        This section of code controls the robots motion in longitudinal direction depending on the facing of the robot. The controller
+        outputs the total torque demand acorss the entire chassis to minimise the x and y errors. This is further arbitrated to
         individual torque demands. Control is only executed when the robot is not yawing significantly (identified using the inhibit_move_motion flag).
         Control is clipped between -5Nm and 5Nm to avoid excessive torque. Higher torque can cause the robot to wheeliee!
         Control direction is inverted (by inverting the error) when the robot is facing the SOUTH or WEST direction to allow the robot to move forward
@@ -245,16 +245,17 @@ class Controller:
             ctrl_move = 0
 
         ctrl_move = np.clip(ctrl_move,-self.CTRL_CLIP_MOVE,self.CTRL_CLIP_MOVE)  
+
         ## Control for rotational motion ##
         """
-        This section of the code controls the robots motion around the Z axis. The robot has 4 wheel each with its own motor - 
+        This section of the code controls the robots motion around the Z axis. The robot has 4 wheel each with it's own motor - 
         This allows the robot to do a TANK TURN on the spot to rotate. Rotation is faciliated using this control. The controller 
         reduces the error between the continual yaw target and actual. If the clearance to perform the yaw motion is not available, 
         the controller hold the current yaw angle until clearance becomes available. The yaw motion is also inhibited when 
         a move motion is active indicated using the inhibit_yaw_motion flag. This controller provides the delta torque required per axle
         between the left and right side to faciliate rotation. Control action is clipped to 10.3Nm to allow smooth control and prevent excessive rotation. 
 
-        If during a rotation control action, the x or y coordinates gets too close to the edges, the yaw motion is stopped untill 
+        If during a rotation control action, the x or y coordinates gets too close to the edges, the yaw motion is stopped until 
         the longitudinal controller can make space before continuing with the yaw motion. This is signified with an edge_evade_move flag. 
 
         The PID controllers internal states are reset when the yaw error is less than a value (0.1).
@@ -277,16 +278,16 @@ class Controller:
             ctrl_yaw = 0
 
         if np.abs(yaw_error)<0.01:
-            self.PID_yaw.reset()                  # reset integral and error when the yaw error is almost zero to reduce impact on furture movements
+            self.PID_yaw.reset()                  # reset integral and error when the yaw error is almost zero to reduce impact on future movements
 
 
         ## prevent cross motion between rotation and translation
         """
         This section of code identifies which controller is currently active and inhibits the other. The robot uses 4 motor, one on each
-        wheel to facilitate translational and rotational motion. This ensures that the robots action are predictable and the robot dosent
+        wheel to facilitate translational and rotational motion. This ensures that the robots action are predictable and the robot doesn't
         try to rotate when moving forward, which would result in unwanted pose.The code checks if either of the controllers are active and 
         inhibits the other one. The inhibition is only removed after a debounce implemented with the help of the SETTLE_DEBOUNCE_CNT
-        variable. To release the inhibit the control action from the current controller has to be less than a value for SETTLE_DEBOUNCE_CNTs.
+        variable. To release the inhibition, the control action from the current controller has to be less than a value for SETTLE_DEBOUNCE_CNTs.
         """
         # Requirement ID SR-023  #Inhibit yaw motion when move motion is active
         if abs(ctrl_move)>1:

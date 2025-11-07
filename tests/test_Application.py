@@ -3,7 +3,7 @@ import logging
 import pytest
 import mujoco
 import time
-import threading, queue
+import threading
 import logging
 from src.ToyRobotControl_main import main
 
@@ -54,20 +54,32 @@ def params():
         SETTLE_DEBOUNCE_CNT=SETTLE_DEBOUNCE_CNT
     )
 
+@pytest.fixture
+def fake_stdin(monkeypatch):
+    # Build a queue that the main() function will read from
+    cmd_q = queue.Queue()
+
+    class FakeStdin:
+        def __iter__(self):
+            while True:
+                yield cmd_q.get()
+        def readline(self, *_, **__):
+            return cmd_q.get()
+
+    fs = FakeStdin()
+    monkeypatch.setattr("sys.stdin", fs)
+    return cmd_q
 
 ### Test Cases ###
 
-def test_TC_045_integration_movement_1(capsys,monkeypatch,params):
+def test_TC_045_integration_movement_1(capsys,fake_stdin,params):
     """
     TC_045: Integration test of main()
     test if model can be placed and moved correctly via command inputs.
     """
 
-    # Build a queue that the main() function will read from
-    cmd_q = queue.Queue()
-
     # Background thread: feeds commands with 1-second gaps
-    def slow_input_feeder():
+    def slow_input_feeder(cmd_q):
         commands = [
             "PLACE 1,1,NORTH",
             "MOVE",
@@ -76,21 +88,11 @@ def test_TC_045_integration_movement_1(capsys,monkeypatch,params):
             "QUIT"
         ]
         for cmd in commands:
-            cmd_q.put(cmd + "\n")  # add newline at the end of each command
-            time.sleep(1.5)          # wait 1 second between commands to allow processing
+            cmd_q.put(cmd + "\n")       # add newline at the end of each command
+            time.sleep(1.5)             # wait 1 second between commands to allow processing
 
     # Start feeder thread
-    threading.Thread(target=slow_input_feeder, daemon=True).start()
-
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
-    class FakeStdin:
-        def __iter__(self):
-            while True:
-                # Wait until a command is available in the queue (because of the 1 second sleep)
-                yield cmd_q.get()
-
-    fake_stdin = FakeStdin()
-    monkeypatch.setattr("sys.stdin", fake_stdin)
+    threading.Thread(target=slow_input_feeder, args=(fake_stdin,), daemon=True).start()
 
     with pytest.raises(SystemExit):
         main(**params)
@@ -98,17 +100,14 @@ def test_TC_045_integration_movement_1(capsys,monkeypatch,params):
     out = capsys.readouterr().out
     assert "robot at x=1 y=2 facing EAST" in out, "Expected REPORT output not found."
 
-def test_TC_045_integration_movement_2(capsys,monkeypatch,params):
+def test_TC_045_integration_movement_2(capsys,fake_stdin,params):
     """
     TC_045: Integration test of main()
     test if model can be placed and moved correctly via command inputs.
     """
 
-    # Build a queue that the main() function will read from
-    cmd_q = queue.Queue()
-
     # Background thread: feeds commands with 1-second gaps
-    def slow_input_feeder():
+    def slow_input_feeder(cmd_q):
         commands = [
             "PLACE 2,2,SOUTH",
             "MOVE",
@@ -121,17 +120,7 @@ def test_TC_045_integration_movement_2(capsys,monkeypatch,params):
             time.sleep(1.5)          # wait 1 second between commands to allow processing
 
     # Start feeder thread
-    threading.Thread(target=slow_input_feeder, daemon=True).start()
-
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
-    class FakeStdin:
-        def __iter__(self):
-            while True:
-                # Wait until a command is available in the queue (because of the 1 second sleep)
-                yield cmd_q.get()
-
-    fake_stdin = FakeStdin()
-    monkeypatch.setattr("sys.stdin", fake_stdin)
+    threading.Thread(target=slow_input_feeder, args=(fake_stdin,), daemon=True).start()
 
     with pytest.raises(SystemExit):
         main(**params)
@@ -139,17 +128,14 @@ def test_TC_045_integration_movement_2(capsys,monkeypatch,params):
     out = capsys.readouterr().out
     assert "robot at x=2 y=1 facing EAST" in out, "Expected REPORT output not found."
 
-def test_TC_045_integration_movement_3(capsys,monkeypatch,params):
+def test_TC_045_integration_movement_3(capsys,fake_stdin,params):
     """
     TC_045: Integration test of main()
     test if model can be placed and moved correctly via command inputs.
     """
 
-    # Build a queue that the main() function will read from
-    cmd_q = queue.Queue()
-
     # Background thread: feeds commands with 1-second gaps
-    def slow_input_feeder():
+    def slow_input_feeder(cmd_q):
         commands = [
             "PLACE 2,2,SOUTH",
             "LEFT",
@@ -163,17 +149,7 @@ def test_TC_045_integration_movement_3(capsys,monkeypatch,params):
             time.sleep(3)          # wait 1 second between commands to allow processing
 
     # Start feeder thread
-    threading.Thread(target=slow_input_feeder, daemon=True).start()
-
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
-    class FakeStdin:
-        def __iter__(self):
-            while True:
-                # Wait until a command is available in the queue (because of the 1 second sleep)
-                yield cmd_q.get()
-
-    fake_stdin = FakeStdin()
-    monkeypatch.setattr("sys.stdin", fake_stdin)
+    threading.Thread(target=slow_input_feeder, args=(fake_stdin,), daemon=True).start()
 
     with pytest.raises(SystemExit):
         main(**params)
@@ -181,16 +157,13 @@ def test_TC_045_integration_movement_3(capsys,monkeypatch,params):
     out = capsys.readouterr().out
     assert "robot at x=2 y=3 facing NORTH" in out, "Expected REPORT output not found."
 
-def test_TC_046_first_command_not_place(caplog,monkeypatch,params):
+def test_TC_046_first_command_not_place(caplog,fake_stdin,params):
     """
-    test if the first command is not PLACE, appropriate error is logged.
+    TC_046: test if the first command is not PLACE, appropriate error is logged.
     """
-
-    # Build a queue that the main() function will read from
-    cmd_q = queue.Queue()
 
     # Background thread: feeds commands with 1-second gaps
-    def slow_input_feeder():
+    def slow_input_feeder(cmd_q):
         commands = [
             "LEFT",
             "QUIT"
@@ -200,33 +173,21 @@ def test_TC_046_first_command_not_place(caplog,monkeypatch,params):
             time.sleep(1)          # wait 1 second between commands to allow processing
 
     # Start feeder thread
-    threading.Thread(target=slow_input_feeder, daemon=True).start()
+    threading.Thread(target=slow_input_feeder, args=(fake_stdin,), daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
-    class FakeStdin:
-        def __iter__(self):
-            while True:
-                # Wait until a command is available in the queue (because of the 1 second sleep)
-                yield cmd_q.get()
-
-    fake_stdin = FakeStdin()
-    monkeypatch.setattr("sys.stdin", fake_stdin)
     with caplog.at_level(logging.INFO):
         with pytest.raises(SystemExit):
             main(**params)
     last_log = caplog.records[-1]
     assert "Please PLACE the robot first using the PLACE X,Y,FACING command" in last_log.getMessage(), "Expected output not found."
 
-def test_TC_047_invalid_command(capsys,monkeypatch,params):
+def test_TC_047_invalid_command(capsys,fake_stdin,params):
     """
-    test if command is invalid, appropriate error is printed.
+    TC_047: test if command is invalid, appropriate error is printed.
     """
-
-    # Build a queue that the main() function will read from
-    cmd_q = queue.Queue()
 
     # Background thread: feeds commands with 1-second gaps
-    def slow_input_feeder():
+    def slow_input_feeder(cmd_q):
         commands = [
             "PLACE 2,2,SOUTH",
             "NORTHWEST",
@@ -237,17 +198,7 @@ def test_TC_047_invalid_command(capsys,monkeypatch,params):
             time.sleep(1)          # wait 1 second between commands to allow processing
 
     # Start feeder thread
-    threading.Thread(target=slow_input_feeder, daemon=True).start()
-
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
-    class FakeStdin:
-        def __iter__(self):
-            while True:
-                # Wait until a command is available in the queue (because of the 1 second sleep)
-                yield cmd_q.get()
-
-    fake_stdin = FakeStdin()
-    monkeypatch.setattr("sys.stdin", fake_stdin)
+    threading.Thread(target=slow_input_feeder, args=(fake_stdin,), daemon=True).start()
    
     with pytest.raises(SystemExit):
         main(**params)
@@ -259,16 +210,13 @@ def test_TC_047_invalid_command(capsys,monkeypatch,params):
     assert "RIGHT" in out
     assert "REPORT" in out
 
-def test_TC_048_moving_left(caplog,monkeypatch,params):
+def test_TC_048_moving_left(caplog,fake_stdin,params):
     """
-    test when moving left command is given, appropriate log is printed.
+    TC_048: test when moving left command is given, appropriate log is printed.
     """
-
-    # Build a queue that the main() function will read from
-    cmd_q = queue.Queue()
 
     # Background thread: feeds commands with 1-second gaps
-    def slow_input_feeder():
+    def slow_input_feeder(cmd_q):
         commands = [
             "PLACE 0,0,NORTH",
             "LEFT",
@@ -279,33 +227,21 @@ def test_TC_048_moving_left(caplog,monkeypatch,params):
             time.sleep(1)          # wait 1 second between commands to allow processing
 
     # Start feeder thread
-    threading.Thread(target=slow_input_feeder, daemon=True).start()
+    threading.Thread(target=slow_input_feeder, args=(fake_stdin,), daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
-    class FakeStdin:
-        def __iter__(self):
-            while True:
-                # Wait until a command is available in the queue (because of the 1 second sleep)
-                yield cmd_q.get()
-
-    fake_stdin = FakeStdin()
-    monkeypatch.setattr("sys.stdin", fake_stdin)
     with caplog.at_level(logging.INFO):
         with pytest.raises(SystemExit):
             main(**params)
     last_log = caplog.records[-1]
     assert "Moving left" in last_log.getMessage(), "Expected output not found."
 
-def test_TC_049_moving_right(caplog,monkeypatch,params):
+def test_TC_049_moving_right(caplog,fake_stdin,params):
     """
-    test when moving right command is given, appropriate log is printed.
+    TC_049: test when moving right command is given, appropriate log is printed.
     """
-
-    # Build a queue that the main() function will read from
-    cmd_q = queue.Queue()
 
     # Background thread: feeds commands with 1-second gaps
-    def slow_input_feeder():
+    def slow_input_feeder(cmd_q):
         commands = [
             "PLACE 4,4,SOUTH",
             "RIGHT",
@@ -316,33 +252,21 @@ def test_TC_049_moving_right(caplog,monkeypatch,params):
             time.sleep(1)          # wait 1 second between commands to allow processing
 
     # Start feeder thread
-    threading.Thread(target=slow_input_feeder, daemon=True).start()
+    threading.Thread(target=slow_input_feeder, args=(fake_stdin,), daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
-    class FakeStdin:
-        def __iter__(self):
-            while True:
-                # Wait until a command is available in the queue (because of the 1 second sleep)
-                yield cmd_q.get()
-
-    fake_stdin = FakeStdin()
-    monkeypatch.setattr("sys.stdin", fake_stdin)
     with caplog.at_level(logging.INFO):
         with pytest.raises(SystemExit):
             main(**params)
     last_log = caplog.records[-1]
     assert "Moving right" in last_log.getMessage(), "Expected output not found."
 
-def test_TC_050_moving_foward(caplog,monkeypatch,params):
+def test_TC_050_moving_foward(caplog,fake_stdin,params):
     """
-    test when moving forward command is given, appropriate log is printed.
+    TC_050: test when moving forward command is given, appropriate log is printed.
     """
-
-    # Build a queue that the main() function will read from
-    cmd_q = queue.Queue()
 
     # Background thread: feeds commands with 1-second gaps
-    def slow_input_feeder():
+    def slow_input_feeder(cmd_q):
         commands = [
             "PLACE 2,2,SOUTH",
             "MOVE",
@@ -353,33 +277,21 @@ def test_TC_050_moving_foward(caplog,monkeypatch,params):
             time.sleep(1)          # wait 1 second between commands to allow processing
 
     # Start feeder thread
-    threading.Thread(target=slow_input_feeder, daemon=True).start()
+    threading.Thread(target=slow_input_feeder, args=(fake_stdin,), daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
-    class FakeStdin:
-        def __iter__(self):
-            while True:
-                # Wait until a command is available in the queue (because of the 1 second sleep)
-                yield cmd_q.get()
-
-    fake_stdin = FakeStdin()
-    monkeypatch.setattr("sys.stdin", fake_stdin)
     with caplog.at_level(logging.INFO):
         with pytest.raises(SystemExit):
             main(**params)
     last_log = caplog.records[-1]
     assert "moving to coordinates 2,1" in last_log.getMessage(), "Expected output not found."
 
-def test_TC_051_moving_foward_clip(caplog,monkeypatch,params):
+def test_TC_051_moving_foward_clip(caplog,fake_stdin,params):
     """
-    test when moving forward command is given at edge motion is inhibited and appropriate log is printed.
+    TC_051: test when moving forward command is given at edge motion is inhibited and appropriate log is printed.
     """
-
-    # Build a queue that the main() function will read from
-    cmd_q = queue.Queue()
 
     # Background thread: feeds commands with 1-second gaps
-    def slow_input_feeder():
+    def slow_input_feeder(cmd_q):
         commands = [
             "PLACE 4,4,NORTH",
             "MOVE",
@@ -390,33 +302,21 @@ def test_TC_051_moving_foward_clip(caplog,monkeypatch,params):
             time.sleep(1)          # wait 1 second between commands to allow processing
 
     # Start feeder thread
-    threading.Thread(target=slow_input_feeder, daemon=True).start()
+    threading.Thread(target=slow_input_feeder, args=(fake_stdin,), daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
-    class FakeStdin:
-        def __iter__(self):
-            while True:
-                # Wait until a command is available in the queue (because of the 1 second sleep)
-                yield cmd_q.get()
-
-    fake_stdin = FakeStdin()
-    monkeypatch.setattr("sys.stdin", fake_stdin)
     with caplog.at_level(logging.INFO):
         with pytest.raises(SystemExit):
             main(**params)
     last_log = caplog.records[-1]
     assert "Cannot move forward. Robot will fall and get hurt! Please rotate. " in last_log.getMessage(), "Expected output not found."
 
-def test_TC_052_place_outside_table(caplog,monkeypatch,params):
+def test_TC_052_place_outside_table(caplog,fake_stdin,params):
     """
-    test the robot cannot be placed outside the table and appropriate error is logged.
+    TC_052: test the robot cannot be placed outside the table and appropriate error is logged.
     """
-
-    # Build a queue that the main() function will read from
-    cmd_q = queue.Queue()
 
     # Background thread: feeds commands with 1-second gaps
-    def slow_input_feeder():
+    def slow_input_feeder(cmd_q):
         commands = [
             "PLACE -1,4,NORTH",
             "QUIT"
@@ -426,33 +326,21 @@ def test_TC_052_place_outside_table(caplog,monkeypatch,params):
             time.sleep(1)          # wait 1 second between commands to allow processing
 
     # Start feeder thread
-    threading.Thread(target=slow_input_feeder, daemon=True).start()
+    threading.Thread(target=slow_input_feeder, args=(fake_stdin,), daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
-    class FakeStdin:
-        def __iter__(self):
-            while True:
-                # Wait until a command is available in the queue (because of the 1 second sleep)
-                yield cmd_q.get()
-
-    fake_stdin = FakeStdin()
-    monkeypatch.setattr("sys.stdin", fake_stdin)
     with caplog.at_level(logging.INFO):
         with pytest.raises(SystemExit):
             main(**params)
     last_log = caplog.records[-1]
     assert "Place coordinates outside table, Robot will fall and get hurt! Allowed coordinates from 0 to 4" in last_log.getMessage(), "Expected output not found."
 
-def test_TC_053_move_inhibit(caplog,monkeypatch,params):
+def test_TC_053_move_inhibit(caplog,fake_stdin,params):
     """
-    test that forward movement is inhibited when inhibit flag is set and appropriate log is printed.
+    TC_053: test that forward movement is inhibited when inhibit flag is set and appropriate log is printed.
     """
-
-    # Build a queue that the main() function will read from
-    cmd_q = queue.Queue()
 
     # Background thread: feeds commands with 1-second gaps
-    def slow_input_feeder():
+    def slow_input_feeder(cmd_q):
         commands = [
             "PLACE 2,2,NORTH",
             "LEFT",
@@ -464,33 +352,21 @@ def test_TC_053_move_inhibit(caplog,monkeypatch,params):
             time.sleep(0.5)          # wait 1 second between commands to allow processing
 
     # Start feeder thread
-    threading.Thread(target=slow_input_feeder, daemon=True).start()
+    threading.Thread(target=slow_input_feeder, args=(fake_stdin,), daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
-    class FakeStdin:
-        def __iter__(self):
-            while True:
-                # Wait until a command is available in the queue (because of the 1 second sleep)
-                yield cmd_q.get()
-
-    fake_stdin = FakeStdin()
-    monkeypatch.setattr("sys.stdin", fake_stdin)
     with caplog.at_level(logging.INFO):
         with pytest.raises(SystemExit):
             main(**params)
     last_log = caplog.records[-1]
     assert "Cannot accept a move motion, another motion in progress" in last_log.getMessage(), "Expected output not found."
 
-def test_TC_054_yaw_inhibit(caplog,monkeypatch,params):
+def test_TC_054_yaw_inhibit(caplog,fake_stdin,params):
     """
-    test that yaw movement is inhibited when inhibit flag is set and appropriate log is printed.
+    TC_054: test that yaw movement is inhibited when inhibit flag is set and appropriate log is printed.
     """
-
-    # Build a queue that the main() function will read from
-    cmd_q = queue.Queue()
 
     # Background thread: feeds commands with 1-second gaps
-    def slow_input_feeder():
+    def slow_input_feeder(cmd_q):
         commands = [
             "PLACE 2,2,NORTH",
             "MOVE",
@@ -502,17 +378,8 @@ def test_TC_054_yaw_inhibit(caplog,monkeypatch,params):
             time.sleep(0.2)          # wait 1 second between commands to allow processing
 
     # Start feeder thread
-    threading.Thread(target=slow_input_feeder, daemon=True).start()
+    threading.Thread(target=slow_input_feeder, args=(fake_stdin,), daemon=True).start()
 
-    # Replace sys.stdin so main() reads from our queue instead of the real terminal
-    class FakeStdin:
-        def __iter__(self):
-            while True:
-                # Wait until a command is available in the queue (because of the 1 second sleep)
-                yield cmd_q.get()
-
-    fake_stdin = FakeStdin()
-    monkeypatch.setattr("sys.stdin", fake_stdin)
     with caplog.at_level(logging.INFO):
         with pytest.raises(SystemExit):
             main(**params)
