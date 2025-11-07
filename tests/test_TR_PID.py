@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from src.TR_PID import PID  # adjust import if src path differs
+from src.TR_PID import PID
 
 
 # ---------------------------- Fixtures ----------------------------
