@@ -167,7 +167,7 @@ class Controller:
                 continue
             
             # Requirement ID SR-007
-            place = parse_place(s) # check for valid PLACE command
+            place = parse_place(s.upper()) # check for valid PLACE command
 
             # Requirement ID SR-027
             if s.upper() not in ["LEFT","RIGHT","MOVE","REPORT"] and place is None:

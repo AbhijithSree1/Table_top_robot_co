@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
     ## PARAMETERS ##
 
-    SETTLE_DEBOUNCE_CNT = 10
+    SETTLE_DEBOUNCE_CNT = 5
 
     # move control parameters
     KP_MOVE = 9
