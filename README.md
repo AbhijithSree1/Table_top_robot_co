@@ -39,9 +39,19 @@ A MuJoCo-based simulation of a **4-wheel toy robot** that moves freely on a 5×5
 
 From the repository root:
 
+Linux:
+
 ```bash
 python3 -m venv venv
 source venv/bin/activate
+pip install -r requirements.txt
+```
+
+Windows (PowerShell):
+
+```bash
+python -m venv venv
+.\venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
@@ -50,6 +60,14 @@ pip install -r requirements.txt
 ## Running the Simulation
 
 From the repository root:
+
+Linux:
+
+```bash
+python3 -m src.ToyRobotControl_main
+```
+
+Windows (PowerShell):
 
 ```bash
 python -m src.ToyRobotControl_main
@@ -79,10 +97,18 @@ Run all tests (unit + integration):
 
 From the repository root:
 
+Linux:
+
 ```bash
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest -v
 ```
 
+Windows (PowerShell):
+
+```bash
+$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+pytest -v
+```
 
 ## License
 
