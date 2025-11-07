@@ -112,53 +112,64 @@ class Controller:
         
         while True:
             line = cmd_q.get_nowait()
-            s = line.strip()
+            s = line.strip() # Requirement ID SR-026
             if not s:
                 continue
 
             # If user types QUIT exit the simulation
-            if s.upper() == "QUIT":                             
+            if s.upper() == "QUIT": # Requirement ID SR-032                            
                 raise SystemExit
             
             # check if placed before accepting moving or rotating commands
-
+            # Requirement ID SR-015 SR-026
             if s.upper() in ["LEFT","RIGHT","MOVE","REPORT"] and self.placed_flag == False:
                 logging.info("Please PLACE the robot first using the PLACE X,Y,FACING command")
                 continue
 
+            # Requirement ID SR-018 SR-023 SR-026
             if s.upper() == "LEFT" and self.placed_flag == True and self.inhibit_yaw_motion == False:
                 self.yaw_tgt = yaw_target_deg(self.yaw_unwrapped_deg,"LEFT")  # calculate yaw target for LEFT movement
-                logging.info("Moving left")
+                logging.info("Moving left") # Requirement ID SR-030
                 continue
-
+            
+            # Requirement ID SR-019 SR-023 SR-026
             elif s.upper() == "RIGHT" and self.placed_flag == True and self.inhibit_yaw_motion == False:
                 self.yaw_tgt = yaw_target_deg(self.yaw_unwrapped_deg,"RIGHT") # calculate yaw target for RIGHT movement
-                logging.info("Moving right")
+                logging.info("Moving right") # Requirement ID SR-029
                 continue
 
+            # Requirement ID SR-023
             if s.upper() in ["LEFT","RIGHT"] and self.inhibit_yaw_motion == True:
                 logging.warning("Cannot accept a rotation motion, another motion in progress")
                 continue
-
+            
+            # Requirement ID SR-017 SR-022
             if s.upper() == "MOVE" and self.placed_flag == True and self.inhibit_move_motion == False:
                 self.x_tgt,self.y_tgt = robot_move_target(self.x_scaled,self.y_scaled,self.facing)   # calculate target x and y movement
+                
+                # Requirement ID SR-021
                 if self.x_tgt < 0 or self.x_tgt > 4 or self.y_tgt < 0 or self.y_tgt > 4:
                     logging.warning("Cannot move forward. Robot will fall and get hurt! Please rotate. ")
                 else:
-                    logging.info(f"moving to coordinates {self.x_tgt},{self.y_tgt}")
+                    logging.info(f"moving to coordinates {self.x_tgt},{self.y_tgt}") # Requirement ID SR-028
                 self.x_tgt = np.clip(self.x_tgt,0,4)      # clip x and y target to ensure they are bounded in the table space
                 self.y_tgt = np.clip(self.y_tgt,0,4)
                 continue
+            
+            # Requirement ID SR-022
             elif s.upper() == "MOVE" and self.inhibit_move_motion == True:
                 logging.warning("Cannot accept a move motion, another motion in progress")
                 continue
-
+            
+            # Requirement ID SR-020
             if s.upper() == "REPORT" and self.placed_flag == True:   # report current position when "REPORT" is entered
                 print(f"robot at x={int(np.round(self.x_scaled))} y={int(np.round(self.y_scaled))} facing {self.facing}")
                 continue
             
+            # Requirement ID SR-007
             place = parse_place(s) # check for valid PLACE command
 
+            # Requirement ID SR-027
             if s.upper() not in ["LEFT","RIGHT","MOVE","REPORT"] and place is None:
                 print("Invalid command, Valid Commands are:")
                 print("     PLACE X,Y,F   X,Y: bot initial coordinates, integers from 0-4 F: Target facing in [NORTH,SOUTH,EAST,WEST]")
@@ -168,8 +179,9 @@ class Controller:
                 print("     REPORT  report the robots current X,Y and Facing ")
                 continue
 
-            if place is not None:
+            if place is not None: # Requirement ID SR-001 SR-006 SR-016
                 x_place, y_place, tgt_facing = place
+                # Requirement ID SR-015
                 if x_place < 0 or x_place > 4 or y_place < 0 or y_place > 4:
                     logging.warning("Place coordinates outside table, Robot will fall and get hurt! Allowed coordinates from 0 to 4")
                     continue
@@ -186,11 +198,13 @@ class Controller:
                     self.x_tgt = self.x_scaled                                            # reset x_target as the new PLACED x coordinate
                     self.y_tgt = self.y_scaled                                            # reset y_target as the new PLACED y coordinate
                     yaw_wrapped  = quaternion_to_yaw(q_w,q_x,q_y,q_z)           # calculate current rotation after PLACING
+                    # Requirement ID SR-013
                     self.yaw_wrapped_prev = yaw_wrapped                              # reset yaw continuous measurements
                     self.yaw_unwrapped     = yaw_wrapped
                     self.yaw_unwrapped_deg = np.rad2deg(self.yaw_unwrapped)
                     self.yaw_tgt = yaw_wrapped                                       # reset yaw target to the new PLACED yaw angle
                     self.facing = current_facing(self.yaw_unwrapped_deg)                   # determine the current facing
+                    # Requirement ID SR-031
                     logging.info(f"robot placed at x={self.x_scaled:.2f} y={self.y_scaled:.2f} facing {self.facing}")
 
     def controller_control_output(self):
@@ -218,6 +232,7 @@ class Controller:
         and reduce target errors. Integral windup is used to avoid unwanted integral action. 
         """
 
+        # Requirement ID SR-017
         if self.facing == "NORTH" and self.inhibit_move_motion ==False:  # Facing North               
             ctrl_move = self.PID_move_Y.step(y_error)
         elif self.facing == "SOUTH" and self.inhibit_move_motion ==False:  # Facing South               
@@ -244,12 +259,14 @@ class Controller:
 
         The PID controllers internal states are reset when the yaw error is less than a value (0.1).
         """
-            
+
+        # Requirement ID SR-018 SR-019    
         if self.inhibit_yaw_motion==False:
             
             ctrl_yaw = self.PID_yaw.step(yaw_error)
             ctrl_yaw = np.clip(ctrl_yaw,-self.CTRL_CLIP_YAW,self.CTRL_CLIP_YAW)  # clip control
 
+            # Requirement ID SR-024   # Edge fall prevention during yaw motion
             if (self.x_scaled < self.YAW_EDGE_STOP_LOW or self.x_scaled > self.YAW_EDGE_STOP_HIGH or 
                 self.y_scaled < self.YAW_EDGE_STOP_LOW or self.y_scaled > self.YAW_EDGE_STOP_HIGH):
                 ctrl_yaw = 0
@@ -271,6 +288,7 @@ class Controller:
         inhibits the other one. The inhibition is only removed after a debounce implemented with the help of the SETTLE_DEBOUNCE_CNT
         variable. To release the inhibit the control action from the current controller has to be less than a value for SETTLE_DEBOUNCE_CNTs.
         """
+        # Requirement ID SR-023  #Inhibit yaw motion when move motion is active
         if abs(ctrl_move)>1:
             self.motion_settle_cntr=0
             self.inhibit_yaw_motion = True
@@ -280,7 +298,7 @@ class Controller:
             if self.motion_settle_cntr>=self.SETTLE_DEBOUNCE_CNT:
                 self.inhibit_yaw_motion = False
 
-
+        # Requirement ID SR-022  #Inhibit move motion when yaw motion is active
         if abs(ctrl_yaw)>1:
             self.yaw_settle_cntr=0
             self.inhibit_move_motion = True

@@ -2,10 +2,12 @@
 	<option timestep="0.001" gravity="0 0 0" cone="pyramidal" integrator="RK4"/>
 
 	<worldbody>
+		<!-- ground plane -->
 		<geom name="floor" type="plane" size="10 10 0.1" rgba="0.7 0.7 0.7 1"
 			friction="1.0 0.01 0.001"/>
 
 		<!-- table -->
+		<!-- Requirement ID SR-004 SR-005 -->
 		<body name="table" pos="0 0 2">
 		<geom name="table_top" type="box" size="2 2 2" rgba="0.9 0.2 0.2 1"
                   friction="0.8 0.01 0.001"
@@ -63,6 +65,7 @@
 	</worldbody>
 
 	<actuator>
+		<!-- Requirement ID SR-002 -->
 		<motor  name="m_fl" joint="j_fl" gear="10" ctrlrange="-1 1"/>
 		<motor  name="m_fr" joint="j_fr" gear="10" ctrlrange="-1 1"/>
 		<motor  name="m_rl" joint="j_rl" gear="10" ctrlrange="-1 1"/>

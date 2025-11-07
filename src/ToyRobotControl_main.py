@@ -40,6 +40,7 @@ def main(model, data, KP_MOVE, KI_MOVE, KD_MOVE, KIWD_MOVE,
    
     with mujoco.viewer.launch_passive(model, data) as viewer:
 
+        # Requirement ID SR-025
         # continuous stdin reader 
         cmd_q = queue.Queue()               # FIFO queue
 
@@ -91,7 +92,8 @@ if __name__ == "__main__":
 
     ## LOAD MODEL ##
 
-    model = mujoco.MjModel.from_xml_path("model/Table_Top_Robot_Sim.xml")
+    # Requirement ID SR-002 SR-003 SR-004
+    model = mujoco.MjModel.from_xml_path("model/Table_Top_Robot_Sim.xml") # load the mujoco model
     data = mujoco.MjData(model)
 
     ## PARAMETERS ##

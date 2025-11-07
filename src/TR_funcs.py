@@ -14,7 +14,7 @@ UITOMAP_OFFSET_FACTOR = 2
 MAPTOUI_SCALING_FACTOR = 1.25
 MAPTOUI_OFFSET_FACTOR = 2
 
-def parse_place(s):
+def parse_place(s): # Requirement ID SR-007 SR-008
     m = PLACE_RE.match(s) # match for the format PLACE X,Y,F where F in {"NORTH","SOUTH","EAST","WEST"}
     if not m:
         return None
@@ -39,7 +39,7 @@ def quaternion_to_yaw(q_w, q_x, q_y, q_z):
     yaw_rad = np.arctan2(siny_cosp, cosy_cosp)
     return yaw_rad
 
-def place_robot(model, data, pos=(0.0, 0.0), facing = "NORTH"):
+def place_robot(model, data, pos=(0.0, 0.0), facing = "NORTH"): # Requirement ID SR-006
     """
     place toyrobot to specified position and orientation
     Args:
@@ -53,12 +53,16 @@ def place_robot(model, data, pos=(0.0, 0.0), facing = "NORTH"):
     data.qpos[2] = 4.25  # always drop the robot from 25cm above the table top. 
 
     # orientation 
+    # Requirement ID SR-009
     if facing == "EAST":
         quat = [1, 0, 0, 0]  # No rotation
+    # Requirement ID SR-011
     elif facing == "WEST":
         quat = [0, 0, 0, 1]  # 180 degrees around Z
+    # Requirement ID SR-012
     elif facing == "SOUTH":
         quat = [0.7071, 0, 0, -0.7071]  # -90 degrees around Z
+    # Requirement ID SR-010
     elif facing == "NORTH":
         quat = [0.7071, 0, 0, 0.7071]  # 90 degrees around Z
     data.qpos[3:7] = quat
