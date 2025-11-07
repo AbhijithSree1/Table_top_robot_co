@@ -37,6 +37,11 @@ A MuJoCo-based simulation of a **4-wheel toy robot** that moves freely on a 5×5
 
 ### Installation
 
+Clone the repository:
+```bash
+https://github.com/AbhijithSree1/Table_top_robot_co.git
+```
+
 From the repository root:
 
 Linux:
@@ -45,7 +50,7 @@ Linux:
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-```
+
 
 Windows (PowerShell):
 
