@@ -183,7 +183,6 @@ def test_TC_045_integration_movement_3(capsys,monkeypatch,params):
 
 def test_TC_046_first_command_not_place(caplog,monkeypatch,params):
     """
-    TC_045: Integration test of main()
     test if the first command is not PLACE, appropriate error is logged.
     """
 
@@ -220,7 +219,6 @@ def test_TC_046_first_command_not_place(caplog,monkeypatch,params):
 
 def test_TC_047_invalid_command(capsys,monkeypatch,params):
     """
-    TC_045: Integration test of main()
     test if command is invalid, appropriate error is printed.
     """
 
@@ -263,7 +261,6 @@ def test_TC_047_invalid_command(capsys,monkeypatch,params):
 
 def test_TC_048_moving_left(caplog,monkeypatch,params):
     """
-    TC_045: Integration test of main()
     test when moving left command is given, appropriate log is printed.
     """
 
@@ -301,7 +298,6 @@ def test_TC_048_moving_left(caplog,monkeypatch,params):
 
 def test_TC_049_moving_right(caplog,monkeypatch,params):
     """
-    TC_045: Integration test of main()
     test when moving right command is given, appropriate log is printed.
     """
 
@@ -339,7 +335,6 @@ def test_TC_049_moving_right(caplog,monkeypatch,params):
 
 def test_TC_050_moving_foward(caplog,monkeypatch,params):
     """
-    TC_045: Integration test of main()
     test when moving forward command is given, appropriate log is printed.
     """
 
@@ -377,7 +372,6 @@ def test_TC_050_moving_foward(caplog,monkeypatch,params):
 
 def test_TC_051_moving_foward_clip(caplog,monkeypatch,params):
     """
-    TC_045: Integration test of main()
     test when moving forward command is given at edge motion is inhibited and appropriate log is printed.
     """
 
@@ -415,7 +409,6 @@ def test_TC_051_moving_foward_clip(caplog,monkeypatch,params):
 
 def test_TC_052_place_outside_table(caplog,monkeypatch,params):
     """
-    TC_045: Integration test of main()
     test the robot cannot be placed outside the table and appropriate error is logged.
     """
 
@@ -452,7 +445,6 @@ def test_TC_052_place_outside_table(caplog,monkeypatch,params):
 
 def test_TC_053_move_inhibit(caplog,monkeypatch,params):
     """
-    TC_045: Integration test of main()
     test that forward movement is inhibited when inhibit flag is set and appropriate log is printed.
     """
 
@@ -491,7 +483,6 @@ def test_TC_053_move_inhibit(caplog,monkeypatch,params):
 
 def test_TC_054_yaw_inhibit(caplog,monkeypatch,params):
     """
-    TC_045: Integration test of main()
     test that yaw movement is inhibited when inhibit flag is set and appropriate log is printed.
     """
 
