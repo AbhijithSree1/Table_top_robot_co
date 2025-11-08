@@ -39,7 +39,7 @@ A MuJoCo-based simulation of a **4-wheel toy robot** that moves freely on a 5×5
 
 Clone the repository:
 ```bash
-https://github.com/AbhijithSree1/Table_top_robot_co.git
+git clone https://github.com/AbhijithSree1/Table_top_robot_co.git
 ```
 
 From the repository root:
